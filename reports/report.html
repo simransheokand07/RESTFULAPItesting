@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 30-Nov-2021 at 11:58:21 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>PLATFORM</td>
+        <td>MCD</td></tr>
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "1.0.0", "py": "1.11.0", "pytest": "6.2.5"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Windows-8.1-6.3.9600-SP0</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"html": "3.1.1", "metadata": "1.11.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.10.0</td></tr></table>
+    <h2>Summary</h2>
+    <p>7 tests ran in 11.31 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">6 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">1 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">FetchData.py::test_check_symbol_is_not_empty_for_arb</td>
+          <td class="col-duration">0.69</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">url_response = [{&#x27;arb&#x27;: 0.5874065636753736, &#x27;poolDepth&#x27;: 14327.875146140745, &#x27;priceToken&#x27;: 3.603538544798757, &#x27;symbol&#x27;: &#x27;1inch&#x27;, ...}...arb&#x27;: -2.831982565251954, &#x27;poolDepth&#x27;: 498.1694939857611, &#x27;priceToken&#x27;: 0.9243904627913744, &#x27;symbol&#x27;: &#x27;b20&#x27;, ...}, ...]<br/><br/>    def test_check_symbol_is_not_empty_for_arb(url_response):<br/>        symbols_list = symbol_in_list(url_response)<br/>        arb_list = arb_in_list(url_response)<br/>        symbolarb_dict = dict(zip(symbols_list, arb_list))<br/>        for k, v in symbolarb_dict.items():<br/>&gt;           assert_that(symbolarb_dict[k]).is_not_none()<br/><span class="error">E           AssertionError: Expected not &lt;None&gt;, but was.</span><br/><br/>FetchData.py:132: AssertionError<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">FetchData.py::test_check_status_code_and_headers</td>
+          <td class="col-duration">3.34</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">FetchData.py::test_check_symbol_is_not_empty_for_pricetoken</td>
+          <td class="col-duration">0.73</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">FetchData.py::test_compare_csv_files_and_symbolpricetoken</td>
+          <td class="col-duration">1.47</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     pytest.ini:FetchData.py:76 Different symbolpricetoken values in Api: [(&#x27;1inch&#x27;, 3.603538544798757), (&#x27;aave&#x27;, 239.43875222957024), (&#x27;akro&#x27;, 0.03167476368381687), (&#x27;akt&#x27;, 2.165572366355332), (&#x27;ant&#x27;, 5.897920401607912), (&#x27;atom&#x27;, 27.179091659449504), (&#x27;axs&#x27;, 133.58903653976157), (&#x27;b20&#x27;, 0.9243904627913744), (&#x27;bal&#x27;, 20.27313221056733), (&#x27;band&#x27;, 7.159835205241248), (&#x27;basecro&#x27;, 0.6768160399410541), (&#x27;bat&#x27;, 1.5171442977966856), (&#x27;bnt&#x27;, 4.002280644529652), (&#x27;bond&#x27;, 24.397294394388776), (&#x27;btsg&#x27;, 0.2164680985492022), (&#x27;cocos&#x27;, 3.0860348447596513), (&#x27;comp&#x27;, 269.9044476950712), (&#x27;conv&#x27;, 0.025358547468083747), (&#x27;cream&#x27;, 36.88515317344413), (&#x27;cro&#x27;, 0.08393166448313842), (&#x27;dai&#x27;, 0.9848012989242696), (&#x27;daofi&#x27;, 0.0006982700862801188), (&#x27;dfyn&#x27;, 0.45989688790595784), (&#x27;dino&#x27;, 0.12981492517227156), (&#x27;dnxc&#x27;, 0.443865550148044), (&#x27;don&#x27;, 1.0536289525567528), (&#x27;dvpn&#x27;, 0.02060806842886875), (&#x27;enj&#x27;, 3.5386530003277885), (&#x27;ern&#x27;, 15.085029779606488), (&#x27;esd&#x27;, 0.05204060177574434), (&#x27;eth&#x27;, 4417.642493332176), (&#x27;eur&#x27;, 1.0600275149168057), (&#x27;frax&#x27;, 0.9015635367200264), (&#x27;ftm&#x27;, 1.9982065301029721), (&#x27;fxs&#x27;, 24.029534282028155), (&#x27;grt&#x27;, 0.8183563889679445), (&#x27;iotx&#x27;, 0.22802743662067884), (&#x27;iris&#x27;, 0.1206082320562359), (&#x27;ixo&#x27;, 0.7914179228090296), (&#x27;juno&#x27;, 8.365381755552763), (&#x27;keep&#x27;, 0.8520633313483326), (&#x27;kft&#x27;, 0.18558505876882675), (&#x27;ldo&#x27;, 4.235404847917863), (&#x27;leash&#x27;, 3543.530027102529), (&#x27;lina&#x27;, 0.054405552912306296), (&#x27;link&#x27;, 23.9931740943687), (&#x27;lon&#x27;, 5.722621017797178), (&#x27;lrc&#x27;, 2.3460622475961803), (&#x27;luna&#x27;, 47.78911909742144), (&#x27;mana&#x27;, 4.976727041146721), (&#x27;matic&#x27;, 1.6165741644667873), (&#x27;metis&#x27;, 96.68901169217092), (&#x27;ngm&#x27;, 0.7820120551930175), (&#x27;ocean&#x27;, 1.0971578681475693), (&#x27;ogn&#x27;, 0.9781009137306139), (&#x27;oh&#x27;, 0.165137591665511), (&#x27;osmo&#x27;, 5.219032948197774), (&#x27;paid&#x27;, 0.939429195708207), (&#x27;pols&#x27;, 3.798432073383089), (&#x27;pond&#x27;, 0.0762706241958113), (&#x27;quick&#x27;, 347.838705488203), (&#x27;rail&#x27;, 0.9791143421109071), (&#x27;ratom&#x27;, 26.277036686475977), (&#x27;reef&#x27;, 0.02408893482085032), (&#x27;regen&#x27;, 1.8155087930894613), (&#x27;rfuel&#x27;, 0.06329982270087177), (&#x27;rly&#x27;, 0.5408690691766936), (&#x27;rndr&#x27;, 6.496989383775432), (&#x27;rune&#x27;, 10.880561638215454), (&#x27;saito&#x27;, 0.05162699004303164), (&#x27;sand&#x27;, 6.968941158963334), (&#x27;shib&#x27;, 4.258495881863679e-05), (&#x27;snx&#x27;, 7.936678078643972), (&#x27;srm&#x27;, 5.244021681869402), (&#x27;susd&#x27;, 0.9889134961461752), (&#x27;sushi&#x27;, 7.250824294122711), (&#x27;sxp&#x27;, 1.9879782367798642), (&#x27;tidal&#x27;, 0.007266291125396302), (&#x27;toke&#x27;, 58.96811104889834), (&#x27;tshp&#x27;, 0.0005561393413158364), (&#x27;tusd&#x27;, 0.9880686172351067), (&#x27;ufo&#x27;, 4.4735887921667023e-05), (&#x27;uma&#x27;, 12.690236472247635), (&#x27;uni&#x27;, 19.400065279742527), (&#x27;usd&#x27;, 1.0048127553461839), (&#x27;usdc&#x27;, 0.9921662177116184), (&#x27;usdt&#x27;, 1), (&#x27;ust&#x27;, 0.9719580227455891), (&#x27;wbtc&#x27;, 56592.937909536435), (&#x27;wfil&#x27;, 204.02384786944177), (&#x27;wscrt&#x27;, 5.13078407727627), (&#x27;xprt&#x27;, 7.5081307622982285), (&#x27;yfi&#x27;, 23334.10037491208), (&#x27;zcn&#x27;, 0.6537219185833287), (&#x27;zcx&#x27;, 3.8095934673619727), (&#x27;zrx&#x27;, 1.0224748679806306)]
+INFO     pytest.ini:FetchData.py:77  ***************** 
+INFO     pytest.ini:FetchData.py:78 Different symbolpricetoken values in csv file: [(&#x27;1inch&#x27;, 3.4950522629009426), (&#x27;aave&#x27;, 232.0049367162847), (&#x27;akro&#x27;, 0.0279529725713026), (&#x27;akt&#x27;, 2.1935991223942866), (&#x27;ant&#x27;, 5.72209094936442), (&#x27;atom&#x27;, 27.00131295451206), (&#x27;axs&#x27;, 129.6064654772361), (&#x27;b20&#x27;, 0.8968324325596667), (&#x27;bal&#x27;, 19.66874736148185), (&#x27;band&#x27;, 6.7640814486124645), (&#x27;basecro&#x27;, 0.7327231705490966), (&#x27;bat&#x27;, 1.5989442519830632), (&#x27;bnt&#x27;, 3.8829642133922406), (&#x27;bond&#x27;, 23.598954273651326), (&#x27;btsg&#x27;, 0.2069096071279708), (&#x27;cocos&#x27;, 3.3359952695208457), (&#x27;comp&#x27;, 258.5231998237435), (&#x27;conv&#x27;, 0.0246025556595493), (&#x27;cream&#x27;, 35.748805181074445), (&#x27;cro&#x27;, 0.0814294844625447), (&#x27;dai&#x27;, 0.9912237108186184), (&#x27;daofi&#x27;, 0.0006774531816038), (&#x27;dfyn&#x27;, 0.4461863912592166), (&#x27;dino&#x27;, 0.12594486833328), (&#x27;dnxc&#x27;, 0.4306329815072379), (&#x27;don&#x27;, 0.4682781968845977), (&#x27;dvpn&#x27;, 0.0208987389193902), (&#x27;enj&#x27;, 3.530935940821375), (&#x27;ern&#x27;, 14.635313211288292), (&#x27;esd&#x27;, 0.0504891616270851), (&#x27;eth&#x27;, 4340.713297970772), (&#x27;eur&#x27;, 1.063205701202648), (&#x27;frax&#x27;, 0.8573978729214283), (&#x27;ftm&#x27;, 1.9842093967117589), (&#x27;fxs&#x27;, 23.313163160891392), (&#x27;grt&#x27;, 0.8195267404210304), (&#x27;iotx&#x27;, 0.2212294575793592), (&#x27;iris&#x27;, 0.1191197802207684), (&#x27;ixo&#x27;, 0.7840347023976052), (&#x27;juno&#x27;, 8.087125620567587), (&#x27;keep&#x27;, 0.7268861572354245), (&#x27;kft&#x27;, 0.1800523765679949), (&#x27;ldo&#x27;, 4.109138492367217), (&#x27;leash&#x27;, 3437.889919870165), (&#x27;lina&#x27;, 0.052149859002738), (&#x27;link&#x27;, 22.96211258328776), (&#x27;lon&#x27;, 5.5520176100804415), (&#x27;lrc&#x27;, 2.2761211816212112), (&#x27;luna&#x27;, 44.42417002164918), (&#x27;mana&#x27;, 4.828360306768338), (&#x27;matic&#x27;, 1.5617290386454383), (&#x27;metis&#x27;, 106.12867836279884), (&#x27;ngm&#x27;, 0.7971593140993302), (&#x27;ocean&#x27;, 1.0644492770095078), (&#x27;ogn&#x27;, 0.9489416616231714), (&#x27;oh&#x27;, 0.1602144916047776), (&#x27;osmo&#x27;, 5.154340603885762), (&#x27;paid&#x27;, 0.9379419511528636), (&#x27;pols&#x27;, 3.685192798287924), (&#x27;pond&#x27;, 0.0739968359515747), (&#x27;quick&#x27;, 337.46889971083056), (&#x27;rail&#x27;, 0.9499248775650352), (&#x27;ratom&#x27;, 25.74418306166244), (&#x27;reef&#x27;, 0.0233707928443115), (&#x27;regen&#x27;, 1.7584065047459156), (&#x27;rfuel&#x27;, 0.0632730843763604), (&#x27;rly&#x27;, 0.4929207492910887), (&#x27;rndr&#x27;, 6.415745667905309), (&#x27;rune&#x27;, 10.905784160369086), (&#x27;saito&#x27;, 0.0500859325058826), (&#x27;sand&#x27;, 7.135811135173187), (&#x27;shib&#x27;, 3.751989969134343e-05), (&#x27;snx&#x27;, 7.402823088352147), (&#x27;srm&#x27;, 4.990623136826025), (&#x27;susd&#x27;, 0.819933194870994), (&#x27;sushi&#x27;, 7.0346619221107325), (&#x27;sxp&#x27;, 1.9287124107524916), (&#x27;tidal&#x27;, 0.0070496676545078), (&#x27;toke&#x27;, 58.01060950661564), (&#x27;tshp&#x27;, 0.0005395596540538), (&#x27;tusd&#x27;, 0.8866538538562095), (&#x27;ufo&#x27;, 4.419981117116684e-05), (&#x27;uma&#x27;, 12.311913745622268), (&#x27;uni&#x27;, 18.82170839810418), (&#x27;usd&#x27;, 1.00767816498071), (&#x27;usdc&#x27;, 0.9976608132833694), (&#x27;usdt&#x27;, 1.0000000000000002), (&#x27;ust&#x27;, 0.9668260319554688), (&#x27;wbtc&#x27;, 56108.075534012096), (&#x27;wfil&#x27;, 25.6555263457316), (&#x27;wscrt&#x27;, 5.207089787358391), (&#x27;xprt&#x27;, 7.520779981719625), (&#x27;yfi&#x27;, 22638.46160596617), (&#x27;zcn&#x27;, 0.6248677361554059), (&#x27;zcx&#x27;, 3.417844040737654), (&#x27;zrx&#x27;, 0.9387194247872032)]<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">FetchData.py::test_check_symbol_is_not_empty_for_pooldepth</td>
+          <td class="col-duration">1.07</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">FetchData.py::test_check_symbol_is_not_empty_for_volume</td>
+          <td class="col-duration">1.58</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">FetchData.py::test_compare_csv_files_and_upper_lower_bound_of_pricetoken</td>
+          <td class="col-duration">1.37</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     pytest.ini:FetchData.py:170 upper and lower bound in Api: [(&#x27;1inch&#x27;, (4, 3)), (&#x27;aave&#x27;, (240, 239)), (&#x27;akro&#x27;, (1, 0)), (&#x27;akt&#x27;, (3, 2)), (&#x27;ant&#x27;, (6, 5)), (&#x27;atom&#x27;, (28, 27)), (&#x27;axs&#x27;, (134, 133)), (&#x27;b20&#x27;, (1, 0)), (&#x27;bal&#x27;, (21, 20)), (&#x27;band&#x27;, (8, 7)), (&#x27;basecro&#x27;, (1, 0)), (&#x27;bat&#x27;, (2, 1)), (&#x27;bnt&#x27;, (5, 4)), (&#x27;bond&#x27;, (25, 24)), (&#x27;btsg&#x27;, (1, 0)), (&#x27;cocos&#x27;, (4, 3)), (&#x27;comp&#x27;, (270, 269)), (&#x27;conv&#x27;, (1, 0)), (&#x27;cream&#x27;, (37, 36)), (&#x27;cro&#x27;, (1, 0)), (&#x27;dai&#x27;, (1, 0)), (&#x27;daofi&#x27;, (1, 0)), (&#x27;dfyn&#x27;, (1, 0)), (&#x27;dino&#x27;, (1, 0)), (&#x27;dnxc&#x27;, (1, 0)), (&#x27;don&#x27;, (2, 1)), (&#x27;dvpn&#x27;, (1, 0)), (&#x27;enj&#x27;, (4, 3)), (&#x27;ern&#x27;, (16, 15)), (&#x27;esd&#x27;, (1, 0)), (&#x27;eth&#x27;, (4418, 4417)), (&#x27;eur&#x27;, (2, 1)), (&#x27;frax&#x27;, (1, 0)), (&#x27;ftm&#x27;, (2, 1)), (&#x27;fxs&#x27;, (25, 24)), (&#x27;grt&#x27;, (1, 0)), (&#x27;iotx&#x27;, (1, 0)), (&#x27;iris&#x27;, (1, 0)), (&#x27;ixo&#x27;, (1, 0)), (&#x27;juno&#x27;, (9, 8)), (&#x27;keep&#x27;, (1, 0)), (&#x27;kft&#x27;, (1, 0)), (&#x27;ldo&#x27;, (5, 4)), (&#x27;leash&#x27;, (3544, 3543)), (&#x27;lina&#x27;, (1, 0)), (&#x27;link&#x27;, (24, 23)), (&#x27;lon&#x27;, (6, 5)), (&#x27;lrc&#x27;, (3, 2)), (&#x27;luna&#x27;, (48, 47)), (&#x27;mana&#x27;, (5, 4)), (&#x27;matic&#x27;, (2, 1)), (&#x27;metis&#x27;, (97, 96)), (&#x27;ngm&#x27;, (1, 0)), (&#x27;ocean&#x27;, (2, 1)), (&#x27;ogn&#x27;, (1, 0)), (&#x27;oh&#x27;, (1, 0)), (&#x27;osmo&#x27;, (6, 5)), (&#x27;paid&#x27;, (1, 0)), (&#x27;pols&#x27;, (4, 3)), (&#x27;pond&#x27;, (1, 0)), (&#x27;quick&#x27;, (348, 347)), (&#x27;rail&#x27;, (1, 0)), (&#x27;ratom&#x27;, (27, 26)), (&#x27;reef&#x27;, (1, 0)), (&#x27;regen&#x27;, (2, 1)), (&#x27;rfuel&#x27;, (1, 0)), (&#x27;rly&#x27;, (1, 0)), (&#x27;rndr&#x27;, (7, 6)), (&#x27;rune&#x27;, (11, 10)), (&#x27;saito&#x27;, (1, 0)), (&#x27;sand&#x27;, (7, 6)), (&#x27;shib&#x27;, (1, 0)), (&#x27;snx&#x27;, (8, 7)), (&#x27;srm&#x27;, (6, 5)), (&#x27;susd&#x27;, (1, 0)), (&#x27;sushi&#x27;, (8, 7)), (&#x27;sxp&#x27;, (2, 1)), (&#x27;tidal&#x27;, (1, 0)), (&#x27;toke&#x27;, (59, 58)), (&#x27;tshp&#x27;, (1, 0)), (&#x27;tusd&#x27;, (1, 0)), (&#x27;ufo&#x27;, (1, 0)), (&#x27;uma&#x27;, (13, 12)), (&#x27;uni&#x27;, (20, 19)), (&#x27;usd&#x27;, (2, 1)), (&#x27;usdc&#x27;, (1, 0)), (&#x27;usdt&#x27;, (1, 1)), (&#x27;ust&#x27;, (1, 0)), (&#x27;wbtc&#x27;, (56593, 56592)), (&#x27;wfil&#x27;, (205, 204)), (&#x27;wscrt&#x27;, (6, 5)), (&#x27;xprt&#x27;, (8, 7)), (&#x27;yfi&#x27;, (23335, 23334)), (&#x27;zcn&#x27;, (1, 0)), (&#x27;zcx&#x27;, (4, 3)), (&#x27;zrx&#x27;, (2, 1))]
+INFO     pytest.ini:FetchData.py:171 ***********
+INFO     pytest.ini:FetchData.py:172 upper and lower bound in csv file is: [(&#x27;1inch&#x27;, &#x27;(4, 3)&#x27;), (&#x27;aave&#x27;, &#x27;(232, 231)&#x27;), (&#x27;akro&#x27;, &#x27;(1, 0)&#x27;), (&#x27;akt&#x27;, &#x27;(3, 2)&#x27;), (&#x27;ant&#x27;, &#x27;(6, 5)&#x27;), (&#x27;atom&#x27;, &#x27;(27, 26)&#x27;), (&#x27;axs&#x27;, &#x27;(130, 129)&#x27;), (&#x27;b20&#x27;, &#x27;(1, 0)&#x27;), (&#x27;bal&#x27;, &#x27;(20, 19)&#x27;), (&#x27;band&#x27;, &#x27;(7, 6)&#x27;), (&#x27;basecro&#x27;, &#x27;(1, 0)&#x27;), (&#x27;bat&#x27;, &#x27;(2, 1)&#x27;), (&#x27;bnt&#x27;, &#x27;(4, 3)&#x27;), (&#x27;bond&#x27;, &#x27;(24, 23)&#x27;), (&#x27;btsg&#x27;, &#x27;(1, 0)&#x27;), (&#x27;cocos&#x27;, &#x27;(4, 3)&#x27;), (&#x27;comp&#x27;, &#x27;(258, 257)&#x27;), (&#x27;conv&#x27;, &#x27;(1, 0)&#x27;), (&#x27;cream&#x27;, &#x27;(36, 35)&#x27;), (&#x27;cro&#x27;, &#x27;(1, 0)&#x27;), (&#x27;dai&#x27;, &#x27;(1, 0)&#x27;), (&#x27;daofi&#x27;, &#x27;(1, 0)&#x27;), (&#x27;dfyn&#x27;, &#x27;(1, 0)&#x27;), (&#x27;dino&#x27;, &#x27;(1, 0)&#x27;), (&#x27;dnxc&#x27;, &#x27;(1, 0)&#x27;), (&#x27;don&#x27;, &#x27;(1, 0)&#x27;), (&#x27;dvpn&#x27;, &#x27;(1, 0)&#x27;), (&#x27;enj&#x27;, &#x27;(4, 3)&#x27;), (&#x27;ern&#x27;, &#x27;(15, 14)&#x27;), (&#x27;esd&#x27;, &#x27;(1, 0)&#x27;), (&#x27;eth&#x27;, &#x27;(4329, 4328)&#x27;), (&#x27;eur&#x27;, &#x27;(2, 1)&#x27;), (&#x27;frax&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ftm&#x27;, &#x27;(2, 1)&#x27;), (&#x27;fxs&#x27;, &#x27;(24, 23)&#x27;), (&#x27;grt&#x27;, &#x27;(1, 0)&#x27;), (&#x27;iotx&#x27;, &#x27;(1, 0)&#x27;), (&#x27;iris&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ixo&#x27;, &#x27;(1, 0)&#x27;), (&#x27;juno&#x27;, &#x27;(9, 8)&#x27;), (&#x27;keep&#x27;, &#x27;(1, 0)&#x27;), (&#x27;kft&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ldo&#x27;, &#x27;(5, 4)&#x27;), (&#x27;leash&#x27;, &#x27;(3429, 3428)&#x27;), (&#x27;lina&#x27;, &#x27;(1, 0)&#x27;), (&#x27;link&#x27;, &#x27;(23, 22)&#x27;), (&#x27;lon&#x27;, &#x27;(6, 5)&#x27;), (&#x27;lrc&#x27;, &#x27;(3, 2)&#x27;), (&#x27;luna&#x27;, &#x27;(45, 44)&#x27;), (&#x27;mana&#x27;, &#x27;(5, 4)&#x27;), (&#x27;matic&#x27;, &#x27;(2, 1)&#x27;), (&#x27;metis&#x27;, &#x27;(106, 105)&#x27;), (&#x27;ngm&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ocean&#x27;, &#x27;(2, 1)&#x27;), (&#x27;ogn&#x27;, &#x27;(1, 0)&#x27;), (&#x27;oh&#x27;, &#x27;(1, 0)&#x27;), (&#x27;osmo&#x27;, &#x27;(6, 5)&#x27;), (&#x27;paid&#x27;, &#x27;(1, 0)&#x27;), (&#x27;pols&#x27;, &#x27;(4, 3)&#x27;), (&#x27;pond&#x27;, &#x27;(1, 0)&#x27;), (&#x27;quick&#x27;, &#x27;(337, 336)&#x27;), (&#x27;rail&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ratom&#x27;, &#x27;(26, 25)&#x27;), (&#x27;reef&#x27;, &#x27;(1, 0)&#x27;), (&#x27;regen&#x27;, &#x27;(2, 1)&#x27;), (&#x27;rfuel&#x27;, &#x27;(1, 0)&#x27;), (&#x27;rly&#x27;, &#x27;(1, 0)&#x27;), (&#x27;rndr&#x27;, &#x27;(7, 6)&#x27;), (&#x27;rune&#x27;, &#x27;(11, 10)&#x27;), (&#x27;saito&#x27;, &#x27;(1, 0)&#x27;), (&#x27;sand&#x27;, &#x27;(8, 7)&#x27;), (&#x27;shib&#x27;, &#x27;(1, 0)&#x27;), (&#x27;snx&#x27;, &#x27;(8, 7)&#x27;), (&#x27;srm&#x27;, &#x27;(5, 4)&#x27;), (&#x27;susd&#x27;, &#x27;(1, 0)&#x27;), (&#x27;sushi&#x27;, &#x27;(8, 7)&#x27;), (&#x27;sxp&#x27;, &#x27;(2, 1)&#x27;), (&#x27;tidal&#x27;, &#x27;(1, 0)&#x27;), (&#x27;toke&#x27;, &#x27;(58, 57)&#x27;), (&#x27;tshp&#x27;, &#x27;(1, 0)&#x27;), (&#x27;tusd&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ufo&#x27;, &#x27;(1, 0)&#x27;), (&#x27;uma&#x27;, &#x27;(13, 12)&#x27;), (&#x27;uni&#x27;, &#x27;(19, 18)&#x27;), (&#x27;usd&#x27;, &#x27;(2, 1)&#x27;), (&#x27;usdc&#x27;, &#x27;(1, 0)&#x27;), (&#x27;usdt&#x27;, &#x27;(1, 1)&#x27;), (&#x27;ust&#x27;, &#x27;(1, 0)&#x27;), (&#x27;wbtc&#x27;, &#x27;(55953, 55952)&#x27;), (&#x27;wfil&#x27;, &#x27;(26, 25)&#x27;), (&#x27;wscrt&#x27;, &#x27;(6, 5)&#x27;), (&#x27;xprt&#x27;, &#x27;(8, 7)&#x27;), (&#x27;yfi&#x27;, &#x27;(22576, 22575)&#x27;), (&#x27;zcn&#x27;, &#x27;(1, 0)&#x27;), (&#x27;zcx&#x27;, &#x27;(4, 3)&#x27;), (&#x27;zrx&#x27;, &#x27;(1, 0)&#x27;)]<br/></div></td></tr></tbody></table></body></html>
