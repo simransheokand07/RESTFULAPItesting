@@ -18,7 +18,7 @@ from configparser import ConfigParser
 '''This Test is checking status_code, content-type , content-length and also checks that amount is greater than or
     equal to zero and check address is not empty'''
 def test_check_statuscode_and_headers_and_amount_is_greaterthan_equalto_zero_and_address_is_notempty():
-    sampleurl = https://data.sifchain.finance/beta/network
+    sampleurl = 'https://data.sifchain.finance/beta/network'
     item = "dispensation"
     keys = "lm_bonus"
     new_url = f'{sampleurl}/{item}/{keys}'
