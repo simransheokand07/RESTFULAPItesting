@@ -1,4 +1,4 @@
-from assettokenstat_test_fetchdata import *
+from .assettokenstat_test_fetchdata import *
 import pandas as pd
 
 
