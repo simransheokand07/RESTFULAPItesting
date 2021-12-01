@@ -8,14 +8,15 @@ import pytest
 @pytest.fixture()
 def get_new_response():
     sampleurl = getconfig()
-    response = requests.get(sampleurl)
-    return response
+    return sampleurl
 
 
 '''Firstly we take previous API and stores the symbols in a list i.e. newsymbols_list ,then we pass the newsymbols_list
     in the url1 and then we fetch the new_symbol from json_data and then check that new_symbol is equal to values of 
     keys i.e. in newsymbols_list , finally check that balance is greater than or equal to zero'''
-def test_check_symbol_and_balance(get_new_response):
+def test_check_symbol_and_balance():
+    sampleurl = getconfig()
+    response = requests.get(sampleurl)
     response_body = get_new_response.json()
     newsymbols_list = []
     for item in response_body:
