@@ -1,10 +1,18 @@
-from network_config import *
+#from network_config import *
 import requests
 from assertpy import assert_that
 
 from configparser import ConfigParser
 
+#from configparser import ConfigParser
 
+
+'''Firstly this function reads api pool_endpoint from pytest.ini file then return sampleurl which store API'''
+def getconfig():
+    config = ConfigParser()
+    config.read('pytest.ini')
+    sampleurl = config.get('api','network_endpoint')
+    return sampleurl
 
 
 '''This Test is checking status_code, content-type , content-length and also checks that amount is greater than or
