@@ -3,7 +3,7 @@ from assertpy import assert_that
 import requests
 
 def test_check_status_code_of_csv_file():
-    df = pd.read_csv('../inputdata/allapi_symbolslist.csv', index_col=0)
+    df = pd.read_csv('inputdata/allapi_symbolslist.csv', index_col=0)
     csvlist = df.index
     print(list(csvlist))
 
