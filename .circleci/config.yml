@@ -22,4 +22,5 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            pytest -v tests/network_test_fetchdata.py
+            pytest -v tests/assettokenstat_test_fetchdata.py 
+            
