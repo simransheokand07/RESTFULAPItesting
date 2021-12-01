@@ -5,6 +5,6 @@ from configparser import ConfigParser
 
 def getconfig():
     config = ConfigParser()
-    config.read('../pytest.ini')
+    config.read('tests/pytest.ini')
     sampleurl = config.get('api','assettokenstat_endpoint')
     return sampleurl
