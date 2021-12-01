@@ -22,5 +22,5 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            pytest -v tests/assettokenstat_test_fetchdata.py 
+            pytest -v tests/pool_test_comparing_symbols_from_csv_file_and_Api.py 
             
