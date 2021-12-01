@@ -1,6 +1,6 @@
 import requests
 import pytest
-from pool_config import *
+from .pool_config import *
 from assertpy.assertpy import assert_that
 import pandas as pd
 import logging
@@ -34,7 +34,7 @@ def symbols_in_list(get_response):
 
 '''This Function reads the data from csv file and give a symbols list i.e csvlist'''
 def baseline_symbol_from_csv_file():
-    df = pd.read_csv('../inputdata/pool_symbolslist.csv', index_col=0)
+    df = pd.read_csv('inputdata/pool_symbolslist.csv', index_col=0)
     csvlist = df.index
     return list(csvlist)
 
