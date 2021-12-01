@@ -180,7 +180,7 @@ def upper_bound_and_lower_bound_of_pricetoken(url_response):
 
 
 def baseline_symbol_and_pricetoken_with_upper_lower_bound_from_csv_file():
-    df = pd.read_csv('../inputdata/assettoken_upperlowerbound.csv')
+    df = pd.read_csv('inputdata/assettoken_upperlowerbound.csv')
     boundCsvDict = df.set_index('0')['1'].to_dict()
     return boundCsvDict
 
