@@ -22,4 +22,4 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            pytest -v tests/network_test_fetchdata.py -c pytest.ini
+            pytest -v tests/network_test_fetchdata.py -c tests/pytest.ini
