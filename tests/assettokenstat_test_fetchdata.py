@@ -68,7 +68,7 @@ def test_check_symbol_is_not_empty_for_pricetoken(url_response):
 
 
 def baseline_symbol_and_pricetoken_from_csv_file():
-    df = pd.read_csv('../inputdata/assettoken_symbolpricetokendict2.csv')
+    df = pd.read_csv('inputdata/assettoken_symbolpricetokendict2.csv')
     csvDict = df.set_index('0')['1'].to_dict()
     return csvDict
 
