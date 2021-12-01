@@ -1,4 +1,5 @@
 import pandas as pd
+from allapi_test_fetchdata.py import *
 
 endpoint = ["https://data.sifchain.finance/beta/pool",
             "https://data.sifchain.finance/beta/pool/1inch",
