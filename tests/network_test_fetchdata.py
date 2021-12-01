@@ -1,4 +1,4 @@
-from network_config import *
+from network_config import getconfig
 import requests
 from assertpy import assert_that
 
