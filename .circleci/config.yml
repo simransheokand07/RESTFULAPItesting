@@ -22,6 +22,5 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            pytest -v tests/pool_test_comparing_symbols_from_csv_file_and_Api.py
-            pytest -v tests/pool_test_convertdataintocsv.py
+            pytest -v tests/pool_test_symbolbalancecheck.py
             
