@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>assettokenstat__report.html</h1>
+    <p>Report generated on 01-Dec-2021 at 10:24:36 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>PLATFORM</td>
+        <td>MCD</td></tr>
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "1.0.0", "py": "1.11.0", "pytest": "6.2.5"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Windows-8.1-6.3.9600-SP0</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"html": "3.1.1", "metadata": "1.11.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.10.0</td></tr></table>
+    <h2>Summary</h2>
+    <p>7 tests ran in 12.79 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">6 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">1 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">tests/AssetTokenStat_FetchData.py::test_check_symbol_is_not_empty_for_arb</td>
+          <td class="col-duration">1.73</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">url_response = [{&#x27;arb&#x27;: 2.7967368177785183, &#x27;poolDepth&#x27;: 14982.001928788946, &#x27;priceToken&#x27;: 3.6650649460673814, &#x27;symbol&#x27;: &#x27;1inch&#x27;, ......arb&#x27;: -13.07803057932242, &#x27;poolDepth&#x27;: 491.7110323829399, &#x27;priceToken&#x27;: 0.8349415114668719, &#x27;symbol&#x27;: &#x27;b20&#x27;, ...}, ...]<br/><br/>    def test_check_symbol_is_not_empty_for_arb(url_response):<br/>        symbols_list = symbol_in_list(url_response)<br/>        arb_list = arb_in_list(url_response)<br/>        symbolarb_dict = dict(zip(symbols_list, arb_list))<br/>        for k, v in symbolarb_dict.items():<br/>&gt;           assert_that(symbolarb_dict[k]).is_not_none()<br/><span class="error">E           AssertionError: Expected not &lt;None&gt;, but was.</span><br/><br/>AssetTokenStat_FetchData.py:157: AssertionError<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/AssetTokenStat_FetchData.py::test_check_status_code_and_headers</td>
+          <td class="col-duration">1.44</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/AssetTokenStat_FetchData.py::test_check_symbol_is_not_empty_for_pricetoken</td>
+          <td class="col-duration">1.91</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/AssetTokenStat_FetchData.py::test_compare_csv_files_and_symbolpricetoken</td>
+          <td class="col-duration">1.25</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     pytest.ini:AssetTokenStat_FetchData.py:89 Different symbolpricetoken values in Api: [(&#x27;1inch&#x27;, 3.6650649460673814), (&#x27;aave&#x27;, 254.7987210472079), (&#x27;akro&#x27;, 0.02822381153892295), (&#x27;akt&#x27;, 2.124883501907799), (&#x27;ant&#x27;, 5.830804471184262), (&#x27;atom&#x27;, 27.682661584736604), (&#x27;axs&#x27;, 142.96453086753374), (&#x27;b20&#x27;, 0.8349415114668719), (&#x27;bal&#x27;, 21.451067453908287), (&#x27;band&#x27;, 7.045456787066499), (&#x27;basecro&#x27;, 0.7127567167304438), (&#x27;bat&#x27;, 1.4749788599220899), (&#x27;bnt&#x27;, 4.283167164146617), (&#x27;bond&#x27;, 26.109535916091037), (&#x27;btsg&#x27;, 0.23166017927834326), (&#x27;cocos&#x27;, 3.302617754044574), (&#x27;comp&#x27;, 288.8472348087163), (&#x27;conv&#x27;, 0.02713825128483359), (&#x27;cream&#x27;, 39.4794869260079), (&#x27;cro&#x27;, 0.08982212424439233), (&#x27;dai&#x27;, 0.9966164476119078), (&#x27;daofi&#x27;, 0.0007472758086263812), (&#x27;dfyn&#x27;, 0.5074377059854926), (&#x27;dino&#x27;, 0.13892554626916487), (&#x27;dnxc&#x27;, 0.47370811180548955), (&#x27;don&#x27;, 1.055096511998881), (&#x27;dvpn&#x27;, 0.020847363017561186), (&#x27;enj&#x27;, 3.600603210031839), (&#x27;ern&#x27;, 12.757620384980859), (&#x27;esd&#x27;, 0.055692895252815136), (&#x27;eth&#x27;, 4713.416749746248), (&#x27;eur&#x27;, 1.0851165418432966), (&#x27;frax&#x27;, 0.9454208766561952), (&#x27;ftm&#x27;, 2.1384438914460318), (&#x27;fxs&#x27;, 25.7159658051203), (&#x27;grt&#x27;, 0.9410181259661227), (&#x27;iotx&#x27;, 0.24403077038210833), (&#x27;iris&#x27;, 0.1177413826265415), (&#x27;ixo&#x27;, 0.7914636391652475), (&#x27;juno&#x27;, 8.655555119047444), (&#x27;keep&#x27;, 0.8669936268073616), (&#x27;kft&#x27;, 0.1986097179090888), (&#x27;ldo&#x27;, 4.532652400232186), (&#x27;leash&#x27;, 3801.804671898819), (&#x27;lina&#x27;, 0.05432486169942983), (&#x27;link&#x27;, 25.677053800769986), (&#x27;lon&#x27;, 6.124243802735658), (&#x27;lrc&#x27;, 2.509179588845009), (&#x27;luna&#x27;, 53.79567647301176), (&#x27;mana&#x27;, 4.723653345395162), (&#x27;matic&#x27;, 1.8264934837089135), (&#x27;metis&#x27;, 91.61895810064217), (&#x27;ngm&#x27;, 0.8107296254302433), (&#x27;ocean&#x27;, 1.174158179220451), (&#x27;ogn&#x27;, 1.0467456154681007), (&#x27;oh&#x27;, 0.17582594589846492), (&#x27;osmo&#x27;, 5.390941921419786), (&#x27;paid&#x27;, 0.973124742327676), (&#x27;pols&#x27;, 3.9905915443698805), (&#x27;pond&#x27;, 0.08162341977728582), (&#x27;quick&#x27;, 372.25058759136954), (&#x27;rail&#x27;, 1.047830167888788), (&#x27;ratom&#x27;, 27.62478797221237), (&#x27;reef&#x27;, 0.025316496735515535), (&#x27;regen&#x27;, 1.815791192950939), (&#x27;rfuel&#x27;, 0.06262560592302961), (&#x27;rly&#x27;, 0.578828133943391), (&#x27;rndr&#x27;, 6.322854398934077), (&#x27;rune&#x27;, 10.968419653946905), (&#x27;saito&#x27;, 0.05186864999107125), (&#x27;sand&#x27;, 6.77933145363294), (&#x27;shib&#x27;, 4.5431557625979896e-05), (&#x27;snx&#x27;, 8.18801007428382), (&#x27;srm&#x27;, 5.612055592484869), (&#x27;susd&#x27;, 1.0583170700384648), (&#x27;sushi&#x27;, 7.606205368107794), (&#x27;sxp&#x27;, 1.9580833597203846), (&#x27;tidal&#x27;, 0.007526549633980631), (&#x27;toke&#x27;, 66.4685357108528), (&#x27;tshp&#x27;, 0.0005951700984424189), (&#x27;tusd&#x27;, 1.0574128746682843), (&#x27;ufo&#x27;, 4.108636414084487e-05), (&#x27;uma&#x27;, 13.580859550420417), (&#x27;uni&#x27;, 20.386185123106703), (&#x27;usd&#x27;, 1.009760188095626), (&#x27;usdc&#x27;, 1.001996094060412), (&#x27;usdt&#x27;, 1), (&#x27;ust&#x27;, 0.9796442583624451), (&#x27;wbtc&#x27;, 58049.248384191196), (&#x27;wfil&#x27;, 98.88224564646752), (&#x27;wscrt&#x27;, 5.536091942796238), (&#x27;xprt&#x27;, 7.63998679676664), (&#x27;yfi&#x27;, 20633.965628723847), (&#x27;zcn&#x27;, 0.7000404741570329), (&#x27;zcx&#x27;, 4.651267659669891), (&#x27;zrx&#x27;, 1.162138681853909)]
+INFO     pytest.ini:AssetTokenStat_FetchData.py:90  ***************** 
+INFO     pytest.ini:AssetTokenStat_FetchData.py:91 Different symbolpricetoken values in csv file: [(&#x27;1inch&#x27;, 3.4950522629009426), (&#x27;aave&#x27;, 232.0049367162847), (&#x27;akro&#x27;, 0.0279529725713026), (&#x27;akt&#x27;, 2.1935991223942866), (&#x27;ant&#x27;, 5.72209094936442), (&#x27;atom&#x27;, 27.00131295451206), (&#x27;axs&#x27;, 129.6064654772361), (&#x27;b20&#x27;, 0.8968324325596667), (&#x27;bal&#x27;, 19.66874736148185), (&#x27;band&#x27;, 6.7640814486124645), (&#x27;basecro&#x27;, 0.7327231705490966), (&#x27;bat&#x27;, 1.5989442519830632), (&#x27;bnt&#x27;, 3.8829642133922406), (&#x27;bond&#x27;, 23.598954273651326), (&#x27;btsg&#x27;, 0.2069096071279708), (&#x27;cocos&#x27;, 3.3359952695208457), (&#x27;comp&#x27;, 258.5231998237435), (&#x27;conv&#x27;, 0.0246025556595493), (&#x27;cream&#x27;, 35.748805181074445), (&#x27;cro&#x27;, 0.0814294844625447), (&#x27;dai&#x27;, 0.9912237108186184), (&#x27;daofi&#x27;, 0.0006774531816038), (&#x27;dfyn&#x27;, 0.4461863912592166), (&#x27;dino&#x27;, 0.12594486833328), (&#x27;dnxc&#x27;, 0.4306329815072379), (&#x27;don&#x27;, 0.4682781968845977), (&#x27;dvpn&#x27;, 0.0208987389193902), (&#x27;enj&#x27;, 3.530935940821375), (&#x27;ern&#x27;, 14.635313211288292), (&#x27;esd&#x27;, 0.0504891616270851), (&#x27;eth&#x27;, 4340.713297970772), (&#x27;eur&#x27;, 1.063205701202648), (&#x27;frax&#x27;, 0.8573978729214283), (&#x27;ftm&#x27;, 1.9842093967117589), (&#x27;fxs&#x27;, 23.313163160891392), (&#x27;grt&#x27;, 0.8195267404210304), (&#x27;iotx&#x27;, 0.2212294575793592), (&#x27;iris&#x27;, 0.1191197802207684), (&#x27;ixo&#x27;, 0.7840347023976052), (&#x27;juno&#x27;, 8.087125620567587), (&#x27;keep&#x27;, 0.7268861572354245), (&#x27;kft&#x27;, 0.1800523765679949), (&#x27;ldo&#x27;, 4.109138492367217), (&#x27;leash&#x27;, 3437.889919870165), (&#x27;lina&#x27;, 0.052149859002738), (&#x27;link&#x27;, 22.96211258328776), (&#x27;lon&#x27;, 5.5520176100804415), (&#x27;lrc&#x27;, 2.2761211816212112), (&#x27;luna&#x27;, 44.42417002164918), (&#x27;mana&#x27;, 4.828360306768338), (&#x27;matic&#x27;, 1.5617290386454383), (&#x27;metis&#x27;, 106.12867836279884), (&#x27;ngm&#x27;, 0.7971593140993302), (&#x27;ocean&#x27;, 1.0644492770095078), (&#x27;ogn&#x27;, 0.9489416616231714), (&#x27;oh&#x27;, 0.1602144916047776), (&#x27;osmo&#x27;, 5.154340603885762), (&#x27;paid&#x27;, 0.9379419511528636), (&#x27;pols&#x27;, 3.685192798287924), (&#x27;pond&#x27;, 0.0739968359515747), (&#x27;quick&#x27;, 337.46889971083056), (&#x27;rail&#x27;, 0.9499248775650352), (&#x27;ratom&#x27;, 25.74418306166244), (&#x27;reef&#x27;, 0.0233707928443115), (&#x27;regen&#x27;, 1.7584065047459156), (&#x27;rfuel&#x27;, 0.0632730843763604), (&#x27;rly&#x27;, 0.4929207492910887), (&#x27;rndr&#x27;, 6.415745667905309), (&#x27;rune&#x27;, 10.905784160369086), (&#x27;saito&#x27;, 0.0500859325058826), (&#x27;sand&#x27;, 7.135811135173187), (&#x27;shib&#x27;, 3.751989969134343e-05), (&#x27;snx&#x27;, 7.402823088352147), (&#x27;srm&#x27;, 4.990623136826025), (&#x27;susd&#x27;, 0.819933194870994), (&#x27;sushi&#x27;, 7.0346619221107325), (&#x27;sxp&#x27;, 1.9287124107524916), (&#x27;tidal&#x27;, 0.0070496676545078), (&#x27;toke&#x27;, 58.01060950661564), (&#x27;tshp&#x27;, 0.0005395596540538), (&#x27;tusd&#x27;, 0.8866538538562095), (&#x27;ufo&#x27;, 4.419981117116684e-05), (&#x27;uma&#x27;, 12.311913745622268), (&#x27;uni&#x27;, 18.82170839810418), (&#x27;usd&#x27;, 1.00767816498071), (&#x27;usdc&#x27;, 0.9976608132833694), (&#x27;usdt&#x27;, 1.0000000000000002), (&#x27;ust&#x27;, 0.9668260319554688), (&#x27;wbtc&#x27;, 56108.075534012096), (&#x27;wfil&#x27;, 25.6555263457316), (&#x27;wscrt&#x27;, 5.207089787358391), (&#x27;xprt&#x27;, 7.520779981719625), (&#x27;yfi&#x27;, 22638.46160596617), (&#x27;zcn&#x27;, 0.6248677361554059), (&#x27;zcx&#x27;, 3.417844040737654), (&#x27;zrx&#x27;, 0.9387194247872032)]<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/AssetTokenStat_FetchData.py::test_check_symbol_is_not_empty_for_pooldepth</td>
+          <td class="col-duration">1.79</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/AssetTokenStat_FetchData.py::test_check_symbol_is_not_empty_for_volume</td>
+          <td class="col-duration">1.76</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="empty log">No log output captured.</div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/AssetTokenStat_FetchData.py::test_compare_csv_files_and_upper_lower_bound_of_pricetoken</td>
+          <td class="col-duration">1.42</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     pytest.ini:AssetTokenStat_FetchData.py:201 upper and lower bound in Api: [(&#x27;1inch&#x27;, (4, 3)), (&#x27;aave&#x27;, (255, 254)), (&#x27;akro&#x27;, (1, 0)), (&#x27;akt&#x27;, (3, 2)), (&#x27;ant&#x27;, (6, 5)), (&#x27;atom&#x27;, (28, 27)), (&#x27;axs&#x27;, (143, 142)), (&#x27;b20&#x27;, (1, 0)), (&#x27;bal&#x27;, (22, 21)), (&#x27;band&#x27;, (8, 7)), (&#x27;basecro&#x27;, (1, 0)), (&#x27;bat&#x27;, (2, 1)), (&#x27;bnt&#x27;, (5, 4)), (&#x27;bond&#x27;, (27, 26)), (&#x27;btsg&#x27;, (1, 0)), (&#x27;cocos&#x27;, (4, 3)), (&#x27;comp&#x27;, (289, 288)), (&#x27;conv&#x27;, (1, 0)), (&#x27;cream&#x27;, (40, 39)), (&#x27;cro&#x27;, (1, 0)), (&#x27;dai&#x27;, (1, 0)), (&#x27;daofi&#x27;, (1, 0)), (&#x27;dfyn&#x27;, (1, 0)), (&#x27;dino&#x27;, (1, 0)), (&#x27;dnxc&#x27;, (1, 0)), (&#x27;don&#x27;, (2, 1)), (&#x27;dvpn&#x27;, (1, 0)), (&#x27;enj&#x27;, (4, 3)), (&#x27;ern&#x27;, (13, 12)), (&#x27;esd&#x27;, (1, 0)), (&#x27;eth&#x27;, (4714, 4713)), (&#x27;eur&#x27;, (2, 1)), (&#x27;frax&#x27;, (1, 0)), (&#x27;ftm&#x27;, (3, 2)), (&#x27;fxs&#x27;, (26, 25)), (&#x27;grt&#x27;, (1, 0)), (&#x27;iotx&#x27;, (1, 0)), (&#x27;iris&#x27;, (1, 0)), (&#x27;ixo&#x27;, (1, 0)), (&#x27;juno&#x27;, (9, 8)), (&#x27;keep&#x27;, (1, 0)), (&#x27;kft&#x27;, (1, 0)), (&#x27;ldo&#x27;, (5, 4)), (&#x27;leash&#x27;, (3802, 3801)), (&#x27;lina&#x27;, (1, 0)), (&#x27;link&#x27;, (26, 25)), (&#x27;lon&#x27;, (7, 6)), (&#x27;lrc&#x27;, (3, 2)), (&#x27;luna&#x27;, (54, 53)), (&#x27;mana&#x27;, (5, 4)), (&#x27;matic&#x27;, (2, 1)), (&#x27;metis&#x27;, (92, 91)), (&#x27;ngm&#x27;, (1, 0)), (&#x27;ocean&#x27;, (2, 1)), (&#x27;ogn&#x27;, (2, 1)), (&#x27;oh&#x27;, (1, 0)), (&#x27;osmo&#x27;, (6, 5)), (&#x27;paid&#x27;, (1, 0)), (&#x27;pols&#x27;, (4, 3)), (&#x27;pond&#x27;, (1, 0)), (&#x27;quick&#x27;, (373, 372)), (&#x27;rail&#x27;, (2, 1)), (&#x27;ratom&#x27;, (28, 27)), (&#x27;reef&#x27;, (1, 0)), (&#x27;regen&#x27;, (2, 1)), (&#x27;rfuel&#x27;, (1, 0)), (&#x27;rly&#x27;, (1, 0)), (&#x27;rndr&#x27;, (7, 6)), (&#x27;rune&#x27;, (11, 10)), (&#x27;saito&#x27;, (1, 0)), (&#x27;sand&#x27;, (7, 6)), (&#x27;shib&#x27;, (1, 0)), (&#x27;snx&#x27;, (9, 8)), (&#x27;srm&#x27;, (6, 5)), (&#x27;susd&#x27;, (2, 1)), (&#x27;sushi&#x27;, (8, 7)), (&#x27;sxp&#x27;, (2, 1)), (&#x27;tidal&#x27;, (1, 0)), (&#x27;toke&#x27;, (67, 66)), (&#x27;tshp&#x27;, (1, 0)), (&#x27;tusd&#x27;, (2, 1)), (&#x27;ufo&#x27;, (1, 0)), (&#x27;uma&#x27;, (14, 13)), (&#x27;uni&#x27;, (21, 20)), (&#x27;usd&#x27;, (2, 1)), (&#x27;usdc&#x27;, (2, 1)), (&#x27;usdt&#x27;, (1, 1)), (&#x27;ust&#x27;, (1, 0)), (&#x27;wbtc&#x27;, (58050, 58049)), (&#x27;wfil&#x27;, (99, 98)), (&#x27;wscrt&#x27;, (6, 5)), (&#x27;xprt&#x27;, (8, 7)), (&#x27;yfi&#x27;, (20634, 20633)), (&#x27;zcn&#x27;, (1, 0)), (&#x27;zcx&#x27;, (5, 4)), (&#x27;zrx&#x27;, (2, 1))]
+INFO     pytest.ini:AssetTokenStat_FetchData.py:202 ***********
+INFO     pytest.ini:AssetTokenStat_FetchData.py:203 upper and lower bound in csv file is: [(&#x27;1inch&#x27;, &#x27;(4, 3)&#x27;), (&#x27;aave&#x27;, &#x27;(232, 231)&#x27;), (&#x27;akro&#x27;, &#x27;(1, 0)&#x27;), (&#x27;akt&#x27;, &#x27;(3, 2)&#x27;), (&#x27;ant&#x27;, &#x27;(6, 5)&#x27;), (&#x27;atom&#x27;, &#x27;(27, 26)&#x27;), (&#x27;axs&#x27;, &#x27;(130, 129)&#x27;), (&#x27;b20&#x27;, &#x27;(1, 0)&#x27;), (&#x27;bal&#x27;, &#x27;(20, 19)&#x27;), (&#x27;band&#x27;, &#x27;(7, 6)&#x27;), (&#x27;basecro&#x27;, &#x27;(1, 0)&#x27;), (&#x27;bat&#x27;, &#x27;(2, 1)&#x27;), (&#x27;bnt&#x27;, &#x27;(4, 3)&#x27;), (&#x27;bond&#x27;, &#x27;(24, 23)&#x27;), (&#x27;btsg&#x27;, &#x27;(1, 0)&#x27;), (&#x27;cocos&#x27;, &#x27;(4, 3)&#x27;), (&#x27;comp&#x27;, &#x27;(258, 257)&#x27;), (&#x27;conv&#x27;, &#x27;(1, 0)&#x27;), (&#x27;cream&#x27;, &#x27;(36, 35)&#x27;), (&#x27;cro&#x27;, &#x27;(1, 0)&#x27;), (&#x27;dai&#x27;, &#x27;(1, 0)&#x27;), (&#x27;daofi&#x27;, &#x27;(1, 0)&#x27;), (&#x27;dfyn&#x27;, &#x27;(1, 0)&#x27;), (&#x27;dino&#x27;, &#x27;(1, 0)&#x27;), (&#x27;dnxc&#x27;, &#x27;(1, 0)&#x27;), (&#x27;don&#x27;, &#x27;(1, 0)&#x27;), (&#x27;dvpn&#x27;, &#x27;(1, 0)&#x27;), (&#x27;enj&#x27;, &#x27;(4, 3)&#x27;), (&#x27;ern&#x27;, &#x27;(15, 14)&#x27;), (&#x27;esd&#x27;, &#x27;(1, 0)&#x27;), (&#x27;eth&#x27;, &#x27;(4329, 4328)&#x27;), (&#x27;eur&#x27;, &#x27;(2, 1)&#x27;), (&#x27;frax&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ftm&#x27;, &#x27;(2, 1)&#x27;), (&#x27;fxs&#x27;, &#x27;(24, 23)&#x27;), (&#x27;grt&#x27;, &#x27;(1, 0)&#x27;), (&#x27;iotx&#x27;, &#x27;(1, 0)&#x27;), (&#x27;iris&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ixo&#x27;, &#x27;(1, 0)&#x27;), (&#x27;juno&#x27;, &#x27;(9, 8)&#x27;), (&#x27;keep&#x27;, &#x27;(1, 0)&#x27;), (&#x27;kft&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ldo&#x27;, &#x27;(5, 4)&#x27;), (&#x27;leash&#x27;, &#x27;(3429, 3428)&#x27;), (&#x27;lina&#x27;, &#x27;(1, 0)&#x27;), (&#x27;link&#x27;, &#x27;(23, 22)&#x27;), (&#x27;lon&#x27;, &#x27;(6, 5)&#x27;), (&#x27;lrc&#x27;, &#x27;(3, 2)&#x27;), (&#x27;luna&#x27;, &#x27;(45, 44)&#x27;), (&#x27;mana&#x27;, &#x27;(5, 4)&#x27;), (&#x27;matic&#x27;, &#x27;(2, 1)&#x27;), (&#x27;metis&#x27;, &#x27;(106, 105)&#x27;), (&#x27;ngm&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ocean&#x27;, &#x27;(2, 1)&#x27;), (&#x27;ogn&#x27;, &#x27;(1, 0)&#x27;), (&#x27;oh&#x27;, &#x27;(1, 0)&#x27;), (&#x27;osmo&#x27;, &#x27;(6, 5)&#x27;), (&#x27;paid&#x27;, &#x27;(1, 0)&#x27;), (&#x27;pols&#x27;, &#x27;(4, 3)&#x27;), (&#x27;pond&#x27;, &#x27;(1, 0)&#x27;), (&#x27;quick&#x27;, &#x27;(337, 336)&#x27;), (&#x27;rail&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ratom&#x27;, &#x27;(26, 25)&#x27;), (&#x27;reef&#x27;, &#x27;(1, 0)&#x27;), (&#x27;regen&#x27;, &#x27;(2, 1)&#x27;), (&#x27;rfuel&#x27;, &#x27;(1, 0)&#x27;), (&#x27;rly&#x27;, &#x27;(1, 0)&#x27;), (&#x27;rndr&#x27;, &#x27;(7, 6)&#x27;), (&#x27;rune&#x27;, &#x27;(11, 10)&#x27;), (&#x27;saito&#x27;, &#x27;(1, 0)&#x27;), (&#x27;sand&#x27;, &#x27;(8, 7)&#x27;), (&#x27;shib&#x27;, &#x27;(1, 0)&#x27;), (&#x27;snx&#x27;, &#x27;(8, 7)&#x27;), (&#x27;srm&#x27;, &#x27;(5, 4)&#x27;), (&#x27;susd&#x27;, &#x27;(1, 0)&#x27;), (&#x27;sushi&#x27;, &#x27;(8, 7)&#x27;), (&#x27;sxp&#x27;, &#x27;(2, 1)&#x27;), (&#x27;tidal&#x27;, &#x27;(1, 0)&#x27;), (&#x27;toke&#x27;, &#x27;(58, 57)&#x27;), (&#x27;tshp&#x27;, &#x27;(1, 0)&#x27;), (&#x27;tusd&#x27;, &#x27;(1, 0)&#x27;), (&#x27;ufo&#x27;, &#x27;(1, 0)&#x27;), (&#x27;uma&#x27;, &#x27;(13, 12)&#x27;), (&#x27;uni&#x27;, &#x27;(19, 18)&#x27;), (&#x27;usd&#x27;, &#x27;(2, 1)&#x27;), (&#x27;usdc&#x27;, &#x27;(1, 0)&#x27;), (&#x27;usdt&#x27;, &#x27;(1, 1)&#x27;), (&#x27;ust&#x27;, &#x27;(1, 0)&#x27;), (&#x27;wbtc&#x27;, &#x27;(55953, 55952)&#x27;), (&#x27;wfil&#x27;, &#x27;(26, 25)&#x27;), (&#x27;wscrt&#x27;, &#x27;(6, 5)&#x27;), (&#x27;xprt&#x27;, &#x27;(8, 7)&#x27;), (&#x27;yfi&#x27;, &#x27;(22576, 22575)&#x27;), (&#x27;zcn&#x27;, &#x27;(1, 0)&#x27;), (&#x27;zcx&#x27;, &#x27;(4, 3)&#x27;), (&#x27;zrx&#x27;, &#x27;(1, 0)&#x27;)]<br/></div></td></tr></tbody></table></body></html>
