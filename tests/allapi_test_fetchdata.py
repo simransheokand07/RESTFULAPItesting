@@ -1,4 +1,4 @@
-from allapi_convertdataintocsv import *
+
 from assertpy import assert_that
 import requests
 
