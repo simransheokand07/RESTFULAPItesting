@@ -1,6 +1,6 @@
 import requests
 from assertpy import assert_that
-from pool_config import *
+from .pool_config import *
 import pytest
 
 
