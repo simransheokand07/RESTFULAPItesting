@@ -3,10 +3,11 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.10
+      - image: circleci/python:3.7
       
+      working_directory: ~/      
           
-       steps:
+      steps:
       # Step 1: obtain repo from GitHub
       - checkout
       # Step 2: create virtual env and install dependencies
