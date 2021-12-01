@@ -2,7 +2,7 @@ import logging
 import requests
 import pytest
 from assertpy import assert_that
-from assettoken_config import *
+from .assettoken_config import *
 import pandas as pd
 import math
 LOGGER = logging.getLogger('pytest.ini')
