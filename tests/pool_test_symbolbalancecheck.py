@@ -17,12 +17,12 @@ def get_new_response():
 def test_check_symbol_and_balance():
     sampleurl = getconfig()
     response = requests.get(sampleurl)
-    response_body = get_new_response.json()
+    response_body = response.json()
     newsymbols_list = []
     for item in response_body:
         newsymbols_list.append(item["externalAsset"]["symbol"])
     for keys in newsymbols_list:
-        symbol_url = f"{get_new_response}/{keys}"
+        symbol_url = f"{sampleurl}/{keys}"
         new_response = requests.get(symbol_url)
         json_data = new_response.json()
         new_symbol = json_data["Pool"]["externalAsset"]["symbol"]
