@@ -28,7 +28,7 @@ def test_check_status_code_and_headers():
     assert_that(response.status_code).is_equal_to(200)
     assert_that(response.headers['content-type']).is_equal_to('application/json')
     total_length = response.headers['content-length']
-    assert_that(int(total_length)).is_between(12000, 18000)
+    assert_that(int(total_length)).is_between(11000, 18000)
 
 
 '''This function stores the symbols in symbols_list'''
