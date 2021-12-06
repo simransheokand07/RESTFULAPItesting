@@ -20,7 +20,7 @@ is in between 16000 to 18000 respectively'''
 def test_check_response_status_and_headers(get_response):
     assert_that(get_response.status_code == 200)
     assert_that(get_response.headers['content-type'] == 'application/json')
-    assert_that(int(get_response.headers['content-length'])).is_between(16000, 18000)
+    assert_that(int(get_response.headers['content-length'])).is_between(16, 180)
 
 
 '''This function stores the symbols in symbol_list'''
