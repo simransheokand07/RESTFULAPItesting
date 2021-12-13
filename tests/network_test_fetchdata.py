@@ -7,6 +7,7 @@ from configparser import ConfigParser
 
 '''This Test is checking status_code, content-type , content-length and also checks that amount is greater than or
     equal to zero and check address is not empty'''
+@pytest.mark.xfail(raises=AssertionError)
 def test_check_statuscode_and_headers_and_amount_is_greaterthan_equalto_zero_and_address_is_notempty():
     sampleurl = getconfig()
     item = "dispensation"
